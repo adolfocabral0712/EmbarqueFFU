@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Estado de despacho planta</title>
+<title>Estado de despacho por empresa</title>
 
 <style>
 :root{
@@ -1316,6 +1316,21 @@ td.observacion{
   }
 }
 
+
+.panel-grafico-ritmo{margin-top:14px}
+.grafico-ritmo-contenedor{
+  position:relative;
+  width:100%;
+  height:430px;
+  padding:14px 18px 18px;
+}
+@media(max-width:700px){
+  .grafico-ritmo-contenedor{
+    height:330px;
+    padding:10px 8px 14px;
+  }
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -1380,6 +1395,15 @@ td.observacion{
           </table>
         </div>
       </section>
+      <section class="panel panel-grafico-ritmo">
+        <div class="panel-header panel-header-centrado">
+          <h2>Gráfico de ritmo de carga por fecha y hora</h2>
+        </div>
+        <div class="grafico-ritmo-contenedor">
+          <canvas id="graficoRitmoCarga"></canvas>
+        </div>
+      </section>
+
 
       <div class="columna-planta">
         <section class="panel">
@@ -1392,21 +1416,6 @@ td.observacion{
               <tbody id="tablaResumenUbicacionesPlanta"></tbody>
             </table>
           </div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-header panel-header-centrado">
-            <h2>Carga de silos por turno</h2>
-          </div>
-          <div class="tabla-contenedor">
-            <table class="tabla-operativa tabla-silos-turno">
-              <thead>
-                <tr><th>TURNO</th><th>DÍA</th><th>CAMIONES</th><th>PROM. TONS/CAMIÓN</th></tr>
-              </thead>
-              <tbody id="tablaSilosTurno"></tbody>
-            </table>
-          </div>
-          <div class="leyenda-turnos">Turno día: 06:00–17:59 · Turno noche: 18:00–05:59</div>
         </section>
       </div>
     </div>
@@ -1777,6 +1786,7 @@ const URL_JSON =
 
 let jsonGlobal = null;
 let graficoLotesBDMT = null;
+let graficoRitmoCarga = null;
 let empresaLotesSeleccionada = "";
 let tipoGraficoSeleccionado = "todos";
 let cantidadLotesSeleccionada = "todos";
@@ -3944,6 +3954,70 @@ function obtenerDepositoSilo(registro){
   ) || "SIN DEFINIR";
 }
 
+
+function renderGraficoRitmoCarga(ritmos,diaSeleccionado){
+  const canvas = document.getElementById("graficoRitmoCarga");
+  if(!canvas || typeof Chart === "undefined") return;
+
+  const visibles = ritmos
+    .filter(g => claveFecha(g.fecha) === diaSeleccionado)
+    .sort((a,b) => a.fecha - b.fecha);
+
+  const etiquetas = visibles.map(
+    g => `${String(g.fecha.getHours()).padStart(2,"0")}:00`
+  );
+  const valores = visibles.map(g => g.camiones);
+
+  if(graficoRitmoCarga){
+    graficoRitmoCarga.destroy();
+  }
+
+  graficoRitmoCarga = new Chart(canvas,{
+    type:"line",
+    data:{
+      labels:etiquetas,
+      datasets:[{
+        label:"Camiones",
+        data:valores,
+        borderColor:"#43d9d0",
+        backgroundColor:"rgba(67,217,208,.16)",
+        borderWidth:3,
+        pointRadius:4,
+        pointHoverRadius:6,
+        pointBackgroundColor:"#ffffff",
+        tension:.28,
+        fill:true
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{mode:"index",intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label:context => `${nf0.format(context.parsed.y)} camiones`
+          }
+        }
+      },
+      scales:{
+        x:{
+          title:{display:true,text:"Hora",color:"#b9d6e6",font:{weight:"bold"}},
+          ticks:{color:"#dff6ff",maxRotation:0,autoSkip:false},
+          grid:{color:"rgba(159,196,219,.12)"}
+        },
+        y:{
+          beginAtZero:true,
+          title:{display:true,text:"Camiones",color:"#b9d6e6",font:{weight:"bold"}},
+          ticks:{color:"#dff6ff",precision:0},
+          grid:{color:"rgba(159,196,219,.14)"}
+        }
+      }
+    }
+  });
+}
+
 function renderPanelPlanta(json){
   const datos = Array.isArray(json?.datos)
     ? json.datos.filter(r => r && !esAnulado(r))
@@ -4037,6 +4111,8 @@ function renderPanelPlanta(json){
       diaRitmoSeleccionado = btn.dataset.dia || "";
       filtrosDiasRitmo.querySelectorAll(".btn-dia-ritmo").forEach(b => b.classList.toggle("activo",b === btn));
       renderFilasRitmo();
+  renderGraficoRitmoCarga(ritmos,diaRitmoSeleccionado);
+      renderGraficoRitmoCarga(ritmos,diaRitmoSeleccionado);
     });
   });
 
