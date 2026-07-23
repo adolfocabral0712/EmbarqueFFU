@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Carga de barco en planta</title>
+<title>Estado de despacho por empresa</title>
 
 <style>
 :root{
@@ -1009,7 +1009,7 @@ td.observacion{
 
 .kpis-planta{
   display:grid;
-  grid-template-columns:repeat(4,minmax(160px,1fr));
+  grid-template-columns:repeat(5,minmax(150px,1fr));
   gap:12px;
   margin-bottom:14px;
 }
@@ -1114,10 +1114,14 @@ td.observacion{
       <h1 id="tituloBarco">Barco</h1>
       <div id="subtituloUltimoRemito" class="subtitulo">Actualización: -</div>
     </div>
-    <div id="estado" class="estado">Actualizando datos...</div>
+    <div id="estado" class="estado">Leyendo DatosBarco.json...</div>
   </div>
 
 
+  <section class="hora-fin-card">
+    <div class="hora-fin-label">HORA DE FINALIZACIÓN</div>
+    <div id="horaFinBarco" class="hora-fin-valor">-</div>
+  </section>
 
   <section class="panel-operativo">
     <div class="kpis-planta">
@@ -1139,7 +1143,12 @@ td.observacion{
       <div class="kpi-planta">
         <div class="etiqueta">Ritmo última hora</div>
         <div id="kpiRitmoUltimaHora" class="valor">-</div>
-        <div id="kpiRitmoUltimaHoraDetalle" class="detalle">-</div>
+        <div id="kpiRitmoUltimaHoraDetalle" class="detalle">Cantidad de la hora anterior</div>
+      </div>
+      <div class="kpi-planta">
+        <div class="etiqueta">Ritmo hora actual</div>
+        <div id="kpiRitmoHoraActual" class="valor">-</div>
+        <div id="kpiRitmoHoraActualDetalle" class="detalle">Cantidad acumulada en la hora actual</div>
       </div>
     </div>
 
@@ -1184,7 +1193,7 @@ td.observacion{
           <div class="tabla-contenedor">
             <table class="tabla-operativa">
               <thead>
-                <tr><th>SILO / DEPÓSITO</th><th>TURNO</th><th>CAMIONES</th><th>TONS</th></tr>
+                <tr><th>TURNO</th><th>DÍA</th><th>CAMIONES</th><th>PROM. TONS/CAMIÓN</th></tr>
               </thead>
               <tbody id="tablaSilosTurno"></tbody>
             </table>
@@ -1195,10 +1204,6 @@ td.observacion{
     </div>
   </section>
 
-  <section class="hora-fin-card">
-    <div class="hora-fin-label">HORA FINALIZACIÓN</div>
-    <div id="horaFinBarco" class="hora-fin-valor">-</div>
-  </section>
 
   <div class="acciones-superiores">
     <button id="btnPrimerRemito" class="btn-primer-remito" type="button">
@@ -3762,11 +3767,38 @@ function renderPanelPlanta(json){
   });
 
   const ritmos = [...agrupadosHora.values()].sort((a,b) => b.fecha-a.fecha);
-  const ultimo = ritmos[0];
-  document.getElementById("kpiRitmoUltimaHora").textContent = ultimo ? `${nf2.format(ultimo.tons)} t/h` : "-";
-  document.getElementById("kpiRitmoUltimaHoraDetalle").textContent = ultimo
-    ? `${etiquetaFechaCompleta(ultimo.fecha)} · ${String(ultimo.fecha.getHours()).padStart(2,"0")}:00 · ${ultimo.camiones} camiones`
-    : "Sin datos horarios";
+
+  const ahora = new Date();
+  const inicioHoraActual = new Date(
+    ahora.getFullYear(),
+    ahora.getMonth(),
+    ahora.getDate(),
+    ahora.getHours(),
+    0,0,0
+  );
+  const inicioHoraAnterior = new Date(inicioHoraActual.getTime() - 3600000);
+
+  const cantidadHoraAnterior = registros.filter(x =>
+    x.fecha &&
+    x.fecha >= inicioHoraAnterior &&
+    x.fecha < inicioHoraActual
+  ).length;
+
+  const cantidadHoraActual = registros.filter(x =>
+    x.fecha &&
+    x.fecha >= inicioHoraActual &&
+    x.fecha <= ahora
+  ).length;
+
+  document.getElementById("kpiRitmoUltimaHora").textContent =
+    nf0.format(cantidadHoraAnterior);
+  document.getElementById("kpiRitmoUltimaHoraDetalle").textContent =
+    `${String(inicioHoraAnterior.getHours()).padStart(2,"0")}:00–${String(inicioHoraActual.getHours()).padStart(2,"0")}:00 · camiones`;
+
+  document.getElementById("kpiRitmoHoraActual").textContent =
+    nf0.format(cantidadHoraActual);
+  document.getElementById("kpiRitmoHoraActualDetalle").textContent =
+    `${String(inicioHoraActual.getHours()).padStart(2,"0")}:00–${String(ahora.getHours()).padStart(2,"0")}:${String(ahora.getMinutes()).padStart(2,"0")} · camiones`;
 
   const cuerpoRitmo = document.getElementById("tablaRitmoCarga");
   cuerpoRitmo.innerHTML = ritmos.length ? ritmos.map(g => `
@@ -3780,19 +3812,49 @@ function renderPanelPlanta(json){
 
   const silos = new Map();
   registros.forEach(x => {
-    const hora = x.fecha ? x.fecha.getHours() : null;
-    const turno = hora === null ? "SIN HORA" : (hora >= 6 && hora < 18 ? "DÍA" : "NOCHE");
-    const deposito = obtenerDepositoSilo(x.registro);
-    const clave = `${deposito}|${turno}`;
-    if(!silos.has(clave)) silos.set(clave,{deposito,turno,camiones:0,tons:0});
-    const g=silos.get(clave); g.camiones++; g.tons+=x.tons;
+    if(!x.fecha) return;
+
+    const hora = x.fecha.getHours();
+    const turno = hora >= 6 && hora < 18 ? "DÍA" : "NOCHE";
+
+    // Para el turno noche, las horas 00:00–05:59 pertenecen al día anterior.
+    const fechaTurno = new Date(x.fecha);
+    if(turno === "NOCHE" && hora < 6){
+      fechaTurno.setDate(fechaTurno.getDate() - 1);
+    }
+
+    const dia = etiquetaFechaCompleta(fechaTurno);
+    const clave = `${claveFecha(fechaTurno)}|${turno}`;
+
+    if(!silos.has(clave)){
+      silos.set(clave,{
+        fecha:new Date(fechaTurno.getFullYear(),fechaTurno.getMonth(),fechaTurno.getDate()),
+        dia,
+        turno,
+        camiones:0,
+        tons:0
+      });
+    }
+
+    const g = silos.get(clave);
+    g.camiones += 1;
+    g.tons += x.tons;
   });
-  const filasSilos=[...silos.values()].sort((a,b)=>
-    a.deposito.localeCompare(b.deposito,"es",{numeric:true}) || a.turno.localeCompare(b.turno,"es")
+
+  const filasSilos = [...silos.values()].sort((a,b) =>
+    b.fecha - a.fecha || a.turno.localeCompare(b.turno,"es")
   );
-  document.getElementById("tablaSilosTurno").innerHTML = filasSilos.length ? filasSilos.map(g=>`
-    <tr><td>${esc(g.deposito)}</td><td>${g.turno}</td><td>${nf0.format(g.camiones)}</td><td>${nf2.format(g.tons)}</td></tr>
-  `).join("") : `<tr><td colspan="4">No hay datos disponibles</td></tr>`;
+
+  document.getElementById("tablaSilosTurno").innerHTML = filasSilos.length
+    ? filasSilos.map(g => `
+      <tr>
+        <td>${g.turno}</td>
+        <td>${g.dia}</td>
+        <td>${nf0.format(g.camiones)}</td>
+        <td>${nf2.format(g.camiones ? g.tons / g.camiones : 0)}</td>
+      </tr>
+    `).join("")
+    : `<tr><td colspan="4">No hay datos disponibles</td></tr>`;
 
   const gps = Array.isArray(json?.gps) ? json.gps : [];
   const mapaUbicacion = new Map();
@@ -3811,7 +3873,7 @@ async function cargar(){
 
   try{
     estado.className = "estado";
-    estado.textContent = "Actualizando datos...";
+    estado.textContent = "Leyendo DatosBarco.json...";
 
     const respuesta = await fetch(URL_JSON + "?_=" + Date.now(),{
       cache:"no-store"
