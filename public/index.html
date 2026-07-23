@@ -1102,6 +1102,83 @@ td.observacion{
   .tabla-operativa{min-width:460px}
 }
 
+
+/* ===== AJUSTE DE TABLAS PARA CELULAR ===== */
+@media(max-width:520px){
+  .tabla-contenedor{
+    width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .tabla-operativa{
+    width:100%;
+    min-width:0;
+    table-layout:fixed;
+  }
+
+  .tabla-operativa th,
+  .tabla-operativa td{
+    padding:4px 2px;
+    font-size:9px;
+    line-height:1.1;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:normal;
+  }
+
+  .tabla-operativa td:first-child{
+    text-align:center;
+  }
+
+  .tabla-ritmo-carga th:nth-child(1),
+  .tabla-ritmo-carga td:nth-child(1){width:19%}
+
+  .tabla-ritmo-carga th:nth-child(2),
+  .tabla-ritmo-carga td:nth-child(2){width:13%}
+
+  .tabla-ritmo-carga th:nth-child(3),
+  .tabla-ritmo-carga td:nth-child(3){width:18%}
+
+  .tabla-ritmo-carga th:nth-child(4),
+  .tabla-ritmo-carga td:nth-child(4){width:18%}
+
+  .tabla-ritmo-carga th:nth-child(5),
+  .tabla-ritmo-carga td:nth-child(5){width:32%}
+
+  .tabla-silos-turno th:nth-child(1),
+  .tabla-silos-turno td:nth-child(1){width:20%}
+
+  .tabla-silos-turno th:nth-child(2),
+  .tabla-silos-turno td:nth-child(2){width:22%}
+
+  .tabla-silos-turno th:nth-child(3),
+  .tabla-silos-turno td:nth-child(3){width:20%}
+
+  .tabla-silos-turno th:nth-child(4),
+  .tabla-silos-turno td:nth-child(4){width:38%}
+
+  .tabla-resumen-ubicaciones{
+    width:100%;
+    min-width:0;
+    table-layout:fixed;
+  }
+
+  .tabla-resumen-ubicaciones th,
+  .tabla-resumen-ubicaciones td{
+    padding:5px 4px;
+    font-size:9px;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+
+  .tabla-resumen-ubicaciones th:first-child,
+  .tabla-resumen-ubicaciones td:first-child{width:76%}
+
+  .tabla-resumen-ubicaciones th:last-child,
+  .tabla-resumen-ubicaciones td:last-child{width:24%}
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -1158,7 +1235,7 @@ td.observacion{
           <h2>Ritmo de carga por fecha y hora</h2>
         </div>
         <div class="tabla-contenedor">
-          <table class="tabla-operativa">
+          <table class="tabla-operativa tabla-ritmo-carga">
             <thead>
               <tr>
                 <th>FECHA</th>
@@ -1191,7 +1268,7 @@ td.observacion{
             <h2>Carga de silos por turno</h2>
           </div>
           <div class="tabla-contenedor">
-            <table class="tabla-operativa">
+            <table class="tabla-operativa tabla-silos-turno">
               <thead>
                 <tr><th>TURNO</th><th>DÍA</th><th>CAMIONES</th><th>PROM. TONS/CAMIÓN</th></tr>
               </thead>
