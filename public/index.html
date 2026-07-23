@@ -1340,11 +1340,6 @@ td.observacion{
   <section class="panel-operativo">
     <div class="kpis-planta">
       <div class="kpi-planta">
-        <div class="etiqueta">Tons cargadas</div>
-        <div id="kpiTonsCargadas" class="valor">-</div>
-        <div class="detalle">Total neto válido</div>
-      </div>
-      <div class="kpi-planta">
         <div class="etiqueta">Promedio tons / camión</div>
         <div id="kpiPromedioTonsCamion" class="valor">-</div>
         <div class="detalle">Promedio general</div>
@@ -3964,7 +3959,6 @@ function renderPanelPlanta(json){
   const cantidad = registros.length;
   const promedio = cantidad ? totalTons / cantidad : 0;
 
-  document.getElementById("kpiTonsCargadas").textContent = nf2.format(totalTons);
   document.getElementById("kpiPromedioTonsCamion").textContent = nf2.format(promedio);
   document.getElementById("kpiCamionesCargados").textContent = nf0.format(cantidad);
 
@@ -4019,9 +4013,9 @@ function renderPanelPlanta(json){
   const filtrosDiasRitmo = document.getElementById("filtrosDiasRitmo");
   const diasRitmo = [...new Map(
     ritmos.map(g => [claveFecha(g.fecha), new Date(g.fecha.getFullYear(),g.fecha.getMonth(),g.fecha.getDate())])
-  ).entries()].sort((a,b) => b[1]-a[1]);
+  ).entries()].sort((a,b) => a[1]-b[1]);
 
-  let diaRitmoSeleccionado = diasRitmo.length ? diasRitmo[0][0] : "";
+  let diaRitmoSeleccionado = diasRitmo.length ? diasRitmo[diasRitmo.length - 1][0] : "";
 
   function renderFilasRitmo(){
     const visibles = ritmos.filter(g => claveFecha(g.fecha) === diaRitmoSeleccionado);
@@ -4083,16 +4077,48 @@ function renderPanelPlanta(json){
     b.fecha - a.fecha || a.turno.localeCompare(b.turno,"es")
   );
 
-  document.getElementById("tablaSilosTurno").innerHTML = filasSilos.length
-    ? filasSilos.map(g => `
+  let htmlSilos = "";
+
+  if(filasSilos.length){
+    const fechaMasReciente = filasSilos[0].fecha;
+    const claveDiaMasReciente = claveFecha(fechaMasReciente);
+
+    const filasDiaActual = filasSilos.filter(
+      g => claveFecha(g.fecha) === claveDiaMasReciente
+    );
+
+    htmlSilos = filasSilos.map(g => `
       <tr>
         <td>${g.turno}</td>
         <td>${g.dia}</td>
         <td>${nf0.format(g.camiones)}</td>
         <td>${nf2.format(g.camiones ? g.tons / g.camiones : 0)}</td>
       </tr>
-    `).join("")
-    : `<tr><td colspan="4">No hay datos disponibles</td></tr>`;
+    `).join("");
+
+    const camionesDiaActual = filasDiaActual.reduce(
+      (acum,g) => acum + g.camiones,
+      0
+    );
+
+    const tonsDiaActual = filasDiaActual.reduce(
+      (acum,g) => acum + g.tons,
+      0
+    );
+
+    htmlSilos += `
+      <tr class="total-operativo">
+        <td>TOTAL DÍA</td>
+        <td>${etiquetaFechaCompleta(fechaMasReciente)}</td>
+        <td>${nf0.format(camionesDiaActual)}</td>
+        <td>${nf2.format(camionesDiaActual ? tonsDiaActual / camionesDiaActual : 0)}</td>
+      </tr>
+    `;
+  }else{
+    htmlSilos = `<tr><td colspan="4">No hay datos disponibles</td></tr>`;
+  }
+
+  document.getElementById("tablaSilosTurno").innerHTML = htmlSilos;
 
   const gps = Array.isArray(json?.gps) ? json.gps : [];
   const mapaUbicacion = new Map();
