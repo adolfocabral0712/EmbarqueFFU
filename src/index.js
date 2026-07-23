@@ -4,59 +4,61 @@ export default {
 
     if (url.pathname === "/api/datos") {
       if (!env.DROPBOX_JSON_URL) {
-        return respuestaJson(
-          { error: "Falta configurar la variable DROPBOX_JSON_URL en Cloudflare." },
-          500
+        return new Response(
+          JSON.stringify({
+            error: "Falta configurar DROPBOX_JSON_URL"
+          }),
+          {
+            status: 500,
+            headers: {
+              "Content-Type": "application/json; charset=utf-8"
+            }
+          }
         );
       }
 
       try {
-        const origen = new URL(env.DROPBOX_JSON_URL);
-        origen.searchParams.set("_", Date.now().toString());
-
-        const respuesta = await fetch(origen.toString(), {
+        const respuesta = await fetch(env.DROPBOX_JSON_URL, {
           headers: {
-            Accept: "application/json",
-            "User-Agent": "Cloudflare-Dashboard-Planta/1.0"
-          },
-          cf: {
-            cacheTtl: 0,
-            cacheEverything: false
+            "User-Agent": "Cloudflare-Worker"
           }
         });
 
         if (!respuesta.ok) {
-          return respuestaJson(
-            { error: `No se pudo leer el JSON de origen. HTTP ${respuesta.status}` },
-            502
+          return new Response(
+            JSON.stringify({
+              error: `Error al leer el JSON: HTTP ${respuesta.status}`
+            }),
+            {
+              status: respuesta.status,
+              headers: {
+                "Content-Type": "application/json; charset=utf-8"
+              }
+            }
           );
         }
 
         const contenido = await respuesta.text();
 
-        try {
-          JSON.parse(contenido);
-        } catch {
-          return respuestaJson(
-            { error: "El archivo de origen no contiene un JSON válido." },
-            502
-          );
-        }
-
         return new Response(contenido, {
           status: 200,
           headers: {
-            "Content-Type": "application/json; charset=UTF-8",
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            Pragma: "no-cache",
-            Expires: "0",
-            "X-Content-Type-Options": "nosniff"
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "no-store"
           }
         });
       } catch (error) {
-        return respuestaJson(
-          { error: "Error al consultar el archivo JSON.", detalle: String(error?.message || error) },
-          502
+        return new Response(
+          JSON.stringify({
+            error: "No se pudo consultar el archivo JSON",
+            detalle: error.message
+          }),
+          {
+            status: 500,
+            headers: {
+              "Content-Type": "application/json; charset=utf-8"
+            }
+          }
         );
       }
     }
@@ -64,14 +66,3 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
-
-function respuestaJson(contenido, estado) {
-  return new Response(JSON.stringify(contenido), {
-    status: estado,
-    headers: {
-      "Content-Type": "application/json; charset=UTF-8",
-      "Cache-Control": "no-store",
-      "X-Content-Type-Options": "nosniff"
-    }
-  });
-}
