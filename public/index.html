@@ -4111,90 +4111,12 @@ function renderPanelPlanta(json){
       diaRitmoSeleccionado = btn.dataset.dia || "";
       filtrosDiasRitmo.querySelectorAll(".btn-dia-ritmo").forEach(b => b.classList.toggle("activo",b === btn));
       renderFilasRitmo();
-  renderGraficoRitmoCarga(ritmos,diaRitmoSeleccionado);
       renderGraficoRitmoCarga(ritmos,diaRitmoSeleccionado);
     });
   });
 
   renderFilasRitmo();
-
-  const silos = new Map();
-  registros.forEach(x => {
-    if(!x.fecha) return;
-
-    const hora = x.fecha.getHours();
-    const turno = hora >= 6 && hora < 18 ? "DÍA" : "NOCHE";
-
-    // Para el turno noche, las horas 00:00–05:59 pertenecen al día anterior.
-    const fechaTurno = new Date(x.fecha);
-    if(turno === "NOCHE" && hora < 6){
-      fechaTurno.setDate(fechaTurno.getDate() - 1);
-    }
-
-    const dia = etiquetaFechaCompleta(fechaTurno);
-    const clave = `${claveFecha(fechaTurno)}|${turno}`;
-
-    if(!silos.has(clave)){
-      silos.set(clave,{
-        fecha:new Date(fechaTurno.getFullYear(),fechaTurno.getMonth(),fechaTurno.getDate()),
-        dia,
-        turno,
-        camiones:0,
-        tons:0
-      });
-    }
-
-    const g = silos.get(clave);
-    g.camiones += 1;
-    g.tons += x.tons;
-  });
-
-  const filasSilos = [...silos.values()].sort((a,b) =>
-    b.fecha - a.fecha || a.turno.localeCompare(b.turno,"es")
-  );
-
-  let htmlSilos = "";
-
-  if(filasSilos.length){
-    const fechaMasReciente = filasSilos[0].fecha;
-    const claveDiaMasReciente = claveFecha(fechaMasReciente);
-
-    const filasDiaActual = filasSilos.filter(
-      g => claveFecha(g.fecha) === claveDiaMasReciente
-    );
-
-    htmlSilos = filasSilos.map(g => `
-      <tr>
-        <td>${g.turno}</td>
-        <td>${g.dia}</td>
-        <td>${nf0.format(g.camiones)}</td>
-        <td>${nf2.format(g.camiones ? g.tons / g.camiones : 0)}</td>
-      </tr>
-    `).join("");
-
-    const camionesDiaActual = filasDiaActual.reduce(
-      (acum,g) => acum + g.camiones,
-      0
-    );
-
-    const tonsDiaActual = filasDiaActual.reduce(
-      (acum,g) => acum + g.tons,
-      0
-    );
-
-    htmlSilos += `
-      <tr class="total-operativo">
-        <td>TOTAL DÍA</td>
-        <td>${etiquetaFechaCompleta(fechaMasReciente)}</td>
-        <td>${nf0.format(camionesDiaActual)}</td>
-        <td>${nf2.format(camionesDiaActual ? tonsDiaActual / camionesDiaActual : 0)}</td>
-      </tr>
-    `;
-  }else{
-    htmlSilos = `<tr><td colspan="4">No hay datos disponibles</td></tr>`;
-  }
-
-  document.getElementById("tablaSilosTurno").innerHTML = htmlSilos;
+  renderGraficoRitmoCarga(ritmos,diaRitmoSeleccionado);
 
   const gps = Array.isArray(json?.gps) ? json.gps : [];
   const mapaUbicacion = new Map();
