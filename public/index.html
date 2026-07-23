@@ -1179,6 +1179,143 @@ td.observacion{
   .tabla-resumen-ubicaciones td:last-child{width:24%}
 }
 
+
+/* ===== AJUSTES OPERATIVOS V2 ===== */
+.kpi-planta .detalle-ritmo{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+}
+
+.kpi-planta .detalle-ritmo .unidad{
+  color:#dff8f6;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.45px;
+}
+
+.kpi-planta .detalle-ritmo .rango{
+  color:var(--muted);
+}
+
+.filtros-dias-ritmo{
+  display:flex;
+  gap:7px;
+  padding:9px 10px;
+  overflow-x:auto;
+  background:#091b29;
+  border-bottom:1px solid var(--border-soft);
+  scrollbar-width:thin;
+}
+
+.btn-dia-ritmo{
+  flex:0 0 auto;
+  min-width:76px;
+  padding:7px 10px;
+  border:1px solid #2e7188;
+  border-radius:8px;
+  background:#0b2638;
+  color:#cde8f5;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.btn-dia-ritmo.activo{
+  border-color:#43d9d0;
+  background:linear-gradient(135deg,#0f6e74,#159795);
+  color:#fff;
+}
+
+.tabla-ritmo-carga{
+  min-width:0;
+  table-layout:fixed;
+}
+
+.tabla-ritmo-carga th:nth-child(1),
+.tabla-ritmo-carga td:nth-child(1){width:38%}
+.tabla-ritmo-carga th:nth-child(2),
+.tabla-ritmo-carga td:nth-child(2){width:28%}
+.tabla-ritmo-carga th:nth-child(3),
+.tabla-ritmo-carga td:nth-child(3){width:34%}
+
+.tabla-silos-turno{
+  width:100%;
+  min-width:0;
+  table-layout:fixed;
+}
+.tabla-silos-turno th,
+.tabla-silos-turno td{
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.tabla-silos-turno th:nth-child(1),
+.tabla-silos-turno td:nth-child(1){width:21%}
+.tabla-silos-turno th:nth-child(2),
+.tabla-silos-turno td:nth-child(2){width:23%}
+.tabla-silos-turno th:nth-child(3),
+.tabla-silos-turno td:nth-child(3){width:20%}
+.tabla-silos-turno th:nth-child(4),
+.tabla-silos-turno td:nth-child(4){width:36%}
+
+.columna-planta .tabla-resumen-ubicaciones{
+  width:100%;
+  min-width:0;
+  table-layout:fixed;
+}
+.columna-planta .tabla-resumen-ubicaciones th:first-child,
+.columna-planta .tabla-resumen-ubicaciones td:first-child{
+  width:78%;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  text-align:left;
+}
+.columna-planta .tabla-resumen-ubicaciones th:last-child,
+.columna-planta .tabla-resumen-ubicaciones td:last-child{
+  width:22%;
+  text-align:center;
+}
+
+@media(max-width:520px){
+  .tabla-ritmo-carga th,
+  .tabla-ritmo-carga td{
+    padding:5px 3px;
+    font-size:9px;
+    white-space:normal;
+  }
+
+  .tabla-ritmo-carga th:nth-child(1),
+  .tabla-ritmo-carga td:nth-child(1){width:36%}
+  .tabla-ritmo-carga th:nth-child(2),
+  .tabla-ritmo-carga td:nth-child(2){width:28%}
+  .tabla-ritmo-carga th:nth-child(3),
+  .tabla-ritmo-carga td:nth-child(3){width:36%}
+
+  .tabla-silos-turno th,
+  .tabla-silos-turno td{
+    padding:5px 2px;
+    font-size:8.5px;
+    line-height:1.15;
+  }
+
+  .tabla-silos-turno th:nth-child(1),
+  .tabla-silos-turno td:nth-child(1){width:19%}
+  .tabla-silos-turno th:nth-child(2),
+  .tabla-silos-turno td:nth-child(2){width:22%}
+  .tabla-silos-turno th:nth-child(3),
+  .tabla-silos-turno td:nth-child(3){width:19%}
+  .tabla-silos-turno th:nth-child(4),
+  .tabla-silos-turno td:nth-child(4){width:40%}
+
+  .columna-planta .tabla-resumen-ubicaciones th,
+  .columna-planta .tabla-resumen-ubicaciones td{
+    font-size:9px;
+    padding:6px 5px;
+  }
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -1234,6 +1371,7 @@ td.observacion{
         <div class="panel-header panel-header-centrado">
           <h2>Ritmo de carga por fecha y hora</h2>
         </div>
+        <div id="filtrosDiasRitmo" class="filtros-dias-ritmo"></div>
         <div class="tabla-contenedor">
           <table class="tabla-operativa tabla-ritmo-carga">
             <thead>
@@ -1241,8 +1379,6 @@ td.observacion{
                 <th>FECHA</th>
                 <th>HORA</th>
                 <th>CAMIONES</th>
-                <th>TONS</th>
-                <th>PROM. TONS/CAMIÓN</th>
               </tr>
             </thead>
             <tbody id="tablaRitmoCarga"></tbody>
@@ -3869,23 +4005,48 @@ function renderPanelPlanta(json){
 
   document.getElementById("kpiRitmoUltimaHora").textContent =
     nf0.format(cantidadHoraAnterior);
-  document.getElementById("kpiRitmoUltimaHoraDetalle").textContent =
-    `${String(inicioHoraAnterior.getHours()).padStart(2,"0")}:00–${String(inicioHoraActual.getHours()).padStart(2,"0")}:00 · camiones`;
+  document.getElementById("kpiRitmoUltimaHoraDetalle").innerHTML =
+    `<span class="unidad">camiones</span><span class="rango">${String(inicioHoraAnterior.getHours()).padStart(2,"0")}:00–${String(inicioHoraActual.getHours()).padStart(2,"0")}:00</span>`;
+  document.getElementById("kpiRitmoUltimaHoraDetalle").classList.add("detalle-ritmo");
 
   document.getElementById("kpiRitmoHoraActual").textContent =
     nf0.format(cantidadHoraActual);
-  document.getElementById("kpiRitmoHoraActualDetalle").textContent =
-    `${String(inicioHoraActual.getHours()).padStart(2,"0")}:00–${String(ahora.getHours()).padStart(2,"0")}:${String(ahora.getMinutes()).padStart(2,"0")} · camiones`;
+  document.getElementById("kpiRitmoHoraActualDetalle").innerHTML =
+    `<span class="unidad">camiones</span><span class="rango">${String(inicioHoraActual.getHours()).padStart(2,"0")}:00–${String(ahora.getHours()).padStart(2,"0")}:${String(ahora.getMinutes()).padStart(2,"0")}</span>`;
+  document.getElementById("kpiRitmoHoraActualDetalle").classList.add("detalle-ritmo");
 
   const cuerpoRitmo = document.getElementById("tablaRitmoCarga");
-  cuerpoRitmo.innerHTML = ritmos.length ? ritmos.map(g => `
-    <tr>
-      <td>${etiquetaFechaCompleta(g.fecha)}</td>
-      <td>${String(g.fecha.getHours()).padStart(2,"0")}:00</td>
-      <td>${nf0.format(g.camiones)}</td>
-      <td>${nf2.format(g.tons)}</td>
-      <td>${nf2.format(g.camiones ? g.tons/g.camiones : 0)}</td>
-    </tr>`).join("") : `<tr><td colspan="5">No hay datos disponibles</td></tr>`;
+  const filtrosDiasRitmo = document.getElementById("filtrosDiasRitmo");
+  const diasRitmo = [...new Map(
+    ritmos.map(g => [claveFecha(g.fecha), new Date(g.fecha.getFullYear(),g.fecha.getMonth(),g.fecha.getDate())])
+  ).entries()].sort((a,b) => b[1]-a[1]);
+
+  let diaRitmoSeleccionado = diasRitmo.length ? diasRitmo[0][0] : "";
+
+  function renderFilasRitmo(){
+    const visibles = ritmos.filter(g => claveFecha(g.fecha) === diaRitmoSeleccionado);
+    cuerpoRitmo.innerHTML = visibles.length ? visibles.map(g => `
+      <tr>
+        <td>${etiquetaFechaCompleta(g.fecha)}</td>
+        <td>${String(g.fecha.getHours()).padStart(2,"0")}:00</td>
+        <td>${nf0.format(g.camiones)}</td>
+      </tr>`).join("") : `<tr><td colspan="3">No hay datos disponibles</td></tr>`;
+  }
+
+  filtrosDiasRitmo.innerHTML = diasRitmo.map(([clave,d]) => `
+    <button type="button" class="btn-dia-ritmo${clave === diaRitmoSeleccionado ? " activo" : ""}" data-dia="${clave}">
+      ${esc(etiquetaFechaCompleta(d))}
+    </button>`).join("");
+
+  filtrosDiasRitmo.querySelectorAll(".btn-dia-ritmo").forEach(btn => {
+    btn.addEventListener("click",() => {
+      diaRitmoSeleccionado = btn.dataset.dia || "";
+      filtrosDiasRitmo.querySelectorAll(".btn-dia-ritmo").forEach(b => b.classList.toggle("activo",b === btn));
+      renderFilasRitmo();
+    });
+  });
+
+  renderFilasRitmo();
 
   const silos = new Map();
   registros.forEach(x => {
