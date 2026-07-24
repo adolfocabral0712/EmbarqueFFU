@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Estado de despacho por empresa</title>
+<title>Despacho Planta Embarque</title>
 
 <style>
 :root{
@@ -1317,6 +1317,83 @@ td.observacion{
 }
 
 
+
+/* ===== DESPACHO POR DÍA Y TURNO ===== */
+.panel-despacho-turno{
+  margin-top:14px;
+}
+
+.tabla-despacho-turno{
+  width:100%;
+  min-width:620px;
+  table-layout:fixed;
+}
+
+.tabla-despacho-turno th,
+.tabla-despacho-turno td{
+  padding:7px 8px;
+  text-align:center;
+  white-space:nowrap;
+}
+
+.tabla-despacho-turno th:nth-child(1),
+.tabla-despacho-turno td:nth-child(1){width:20%}
+.tabla-despacho-turno th:nth-child(2),
+.tabla-despacho-turno td:nth-child(2){width:16%}
+.tabla-despacho-turno th:nth-child(3),
+.tabla-despacho-turno td:nth-child(3){width:20%}
+.tabla-despacho-turno th:nth-child(4),
+.tabla-despacho-turno td:nth-child(4){width:14%}
+.tabla-despacho-turno th:nth-child(5),
+.tabla-despacho-turno td:nth-child(5){width:15%}
+.tabla-despacho-turno th:nth-child(6),
+.tabla-despacho-turno td:nth-child(6){width:15%}
+
+.turno-dia{
+  color:#ffe29a;
+  font-weight:900;
+}
+
+.turno-noche{
+  color:#9fdcff;
+  font-weight:900;
+}
+
+.tabla-despacho-turno .total-dia td{
+  background:#0f5060 !important;
+  color:#ffffff;
+  font-weight:900;
+}
+
+@media(max-width:520px){
+  .tabla-despacho-turno{
+    min-width:0;
+    table-layout:fixed;
+  }
+
+  .tabla-despacho-turno th,
+  .tabla-despacho-turno td{
+    padding:5px 2px;
+    font-size:8px;
+    line-height:1.12;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+
+  .tabla-despacho-turno th:nth-child(1),
+  .tabla-despacho-turno td:nth-child(1){width:18%}
+  .tabla-despacho-turno th:nth-child(2),
+  .tabla-despacho-turno td:nth-child(2){width:14%}
+  .tabla-despacho-turno th:nth-child(3),
+  .tabla-despacho-turno td:nth-child(3){width:20%}
+  .tabla-despacho-turno th:nth-child(4),
+  .tabla-despacho-turno td:nth-child(4){width:14%}
+  .tabla-despacho-turno th:nth-child(5),
+  .tabla-despacho-turno td:nth-child(5){width:17%}
+  .tabla-despacho-turno th:nth-child(6),
+  .tabla-despacho-turno td:nth-child(6){width:17%}
+}
+
 .panel-grafico-ritmo{margin-top:14px}
 .grafico-ritmo-contenedor{
   position:relative;
@@ -1363,6 +1440,15 @@ td.observacion{
     font-size:9px;
   }
 }
+
+
+/* ===== DESPACHO POR DÍA Y TURNO: 3 COLUMNAS ===== */
+.tabla-despacho-turno th:nth-child(1),
+.tabla-despacho-turno td:nth-child(1){width:40%}
+.tabla-despacho-turno th:nth-child(2),
+.tabla-despacho-turno td:nth-child(2){width:30%}
+.tabla-despacho-turno th:nth-child(3),
+.tabla-despacho-turno td:nth-child(3){width:30%}
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1425,6 +1511,24 @@ td.observacion{
               </tr>
             </thead>
             <tbody id="tablaRitmoCarga"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel panel-despacho-turno">
+        <div class="panel-header panel-header-centrado">
+          <h2>Despacho por día y turno</h2>
+        </div>
+        <div class="tabla-contenedor">
+          <table class="tabla-operativa tabla-despacho-turno">
+            <thead>
+              <tr>
+                <th>FECHA</th>
+                <th>TURNO</th>
+                <th>CANTIDAD</th>
+              </tr>
+            </thead>
+            <tbody id="tablaDespachoTurno"></tbody>
           </table>
         </div>
       </section>
@@ -4108,6 +4212,87 @@ function renderGraficoRitmoCarga(ritmos,diaSeleccionado){
   };
 }
 
+
+function obtenerTurnoOperativo(fecha){
+  const hora = fecha.getHours();
+  const esTurnoDia = hora >= 6 && hora < 18;
+
+  const fechaOperativa = new Date(
+    fecha.getFullYear(),
+    fecha.getMonth(),
+    fecha.getDate(),
+    0,0,0,0
+  );
+
+  if(hora < 6){
+    fechaOperativa.setDate(fechaOperativa.getDate() - 1);
+  }
+
+  return {
+    fechaOperativa,
+    turno:esTurnoDia ? "DÍA" : "NOCHE",
+    horario:esTurnoDia ? "06:00–18:00" : "18:00–06:00",
+    ordenTurno:esTurnoDia ? 1 : 2
+  };
+}
+
+function renderDespachoPorTurno(registros){
+  const cuerpo = document.getElementById("tablaDespachoTurno");
+
+  if(!cuerpo){
+    return;
+  }
+
+  const agrupados = new Map();
+
+  registros
+    .filter(x => x.fecha)
+    .forEach(x => {
+      const info = obtenerTurnoOperativo(x.fecha);
+      const clave = `${claveFecha(info.fechaOperativa)}|${info.turno}`;
+
+      if(!agrupados.has(clave)){
+        agrupados.set(clave,{
+          fecha:info.fechaOperativa,
+          turno:info.turno,
+          horario:info.horario,
+          ordenTurno:info.ordenTurno,
+          camiones:0,
+          tons:0
+        });
+      }
+
+      const grupo = agrupados.get(clave);
+      grupo.camiones += 1;
+      grupo.tons += x.tons;
+    });
+
+  const filas = [...agrupados.values()].sort((a,b) => {
+    const diferenciaFecha = b.fecha - a.fecha;
+    return diferenciaFecha !== 0
+      ? diferenciaFecha
+      : a.ordenTurno - b.ordenTurno;
+  });
+
+  if(!filas.length){
+    cuerpo.innerHTML = `<tr><td colspan="3">No hay datos disponibles</td></tr>`;
+    return;
+  }
+
+  const detalle = filas.map(g => {
+    const claseTurno = g.turno === "DÍA" ? "turno-dia" : "turno-noche";
+
+    return `
+      <tr>
+        <td>${etiquetaFechaCompleta(g.fecha)}</td>
+        <td class="${claseTurno}">${g.turno}</td>
+        <td>${nf0.format(g.camiones)}</td>
+      </tr>`;
+  }).join("");
+
+  cuerpo.innerHTML = detalle;
+}
+
 function renderPanelPlanta(json){
   const datos = Array.isArray(json?.datos)
     ? json.datos.filter(r => r && !esAnulado(r))
@@ -4125,6 +4310,8 @@ function renderPanelPlanta(json){
 
   document.getElementById("kpiPromedioTonsCamion").textContent = nf2.format(promedio);
   document.getElementById("kpiCamionesCargados").textContent = nf0.format(cantidad);
+
+  renderDespachoPorTurno(registros);
 
   const agrupadosHora = new Map();
   registros.filter(x => x.fecha).forEach(x => {
